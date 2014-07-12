@@ -13,6 +13,7 @@ def backUpCardSet(setId):
                 conn = psycopg2.connect(connString);
         except:
                 print("Unable to connect to database");
+                
         card_set = getCardSet (setId, conn);
 
         encoded = json.dumps(card_set, separators=(',',':'));
@@ -103,5 +104,49 @@ def getCardSetBlackCards(setId, conn):
         
         return retArray;
 
-backUpCardSet(1151);
+def restoreCardSet(filename):
+        file = open(filename, 'r');
+        set_json = file.read();
+        file.close();
 
+        card_set = json.loads(set_json);
+
+        try:
+                conn = psycopg2.connect(connString);
+        except:
+                print("Unable to connect to database");
+
+        card_set_id = insertCardSetRecord(card_set, conn);
+        insertBlackCards(card_set['black_cards'], card_set_id, conn);
+        insertWhiteCards(card_set['white_cards'], card_set_id, conn);
+
+        conn.commit();
+        conn.close();
+
+def insertCardSetRecord(card_set, conn):
+        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor);
+        card_set_query = "INSERT INTO card_set (id, active, name, base_deck, description, weight) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id;";
+        max_id_query = "SELECT MAX(id) FROM card_set";
+
+        cur.execute(max_id_query);
+        
+        max_id = cur.fetchone()[0];
+        if(max_id is None):
+                max_id = 1;
+        max_id += 1;
+        
+        print(cur.mogrify(card_set_query, (max_id, card_set['active'], card_set['name'], card_set['base_deck'], card_set['description'], card_set['weight'])));
+        
+        cur.execute(card_set_query, (max_id, card_set['active'], card_set['name'], card_set['base_deck'], card_set['description'], card_set['weight']));
+        set_id = cur.fetchone()[0];
+
+        cur.close();
+        
+        return set_id;
+
+def insertBlackCards(black_cards, card_set_id, conn):
+        return;
+
+def insertWhiteCards(white_cards, card_set_id, conn):
+        return;
+restoreCardSet('simplebackup.dat');
