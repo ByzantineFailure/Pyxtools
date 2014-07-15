@@ -115,10 +115,15 @@ def restoreCardSet(filename):
                 conn = psycopg2.connect(connString);
         except:
                 print("Unable to connect to database");
-
-        card_set_id = insertCardSetRecord(card_set, conn);
-        insertBlackCards(card_set['black_cards'], card_set_id, conn);
-        insertWhiteCards(card_set['white_cards'], card_set_id, conn);
+        
+        try:
+                card_set_id = insertCardSetRecord(card_set, conn);
+                insertBlackCards(card_set['black_cards'], card_set_id, conn);
+                insertWhiteCards(card_set['white_cards'], card_set_id, conn);
+        except:
+                print("Error inserting card set.  Rolling everything back...");
+                print("Error was: " + sys.exc_info()[0]);
+                conn.rollback();
 
         conn.commit();
         conn.close();
@@ -131,8 +136,10 @@ def insertCardSetRecord(card_set, conn):
         cur.execute(max_id_query);
         
         max_id = cur.fetchone()[0];
+
         if(max_id is None):
-                max_id = 1;
+                max_id = 0;
+
         max_id += 1;
         
         print(cur.mogrify(card_set_query, (max_id, card_set['active'], card_set['name'], card_set['base_deck'], card_set['description'], card_set['weight'])));
@@ -145,8 +152,61 @@ def insertCardSetRecord(card_set, conn):
         return set_id;
 
 def insertBlackCards(black_cards, card_set_id, conn):
+        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor);
+        max_id_query = "SELECT MAX(id) FROM black_cards;";
+        insert_base_query = "INSERT INTO black_cards (text, draw, pick, watermark) VALUES ";
+        all_ids_query = "SELECT id FROM black_cards WHERE id > %s ;";
+        insert_set_query = "INSERT INTO card_set_black_card (card_set_id, black_card_id) VALUES ";
+        
+        cur.execute(max_id_query);
+
+        max_id = cur.fetchone()[0];
+
+        if(max_id is None):
+                max_id = 0;
+        
+        args_str = ','.join(cur.mogrify("(%s, %s, %s, %s)", (card['text'], card['draw'], card['pick'], card['watermark'])).decode("utf-8") for card in black_cards);
+        query = insert_base_query + args_str + ";";
+
+        cur.execute(query);
+
+        cur.execute(all_ids_query, (max_id, ));
+
+        all_ids = cur.fetchall();
+
+        args_str = ','.join(cur.mogrify("(%s, %s)", (card_set_id, card_id[0])).decode("utf-8") for card_id in all_ids);
+        query = insert_set_query + args_str + ";";
+
+        cur.execute(query);
+                
         return;
 
 def insertWhiteCards(white_cards, card_set_id, conn):
+        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor);
+        max_id_query = "SELECT MAX(id) FROM white_cards;";
+        insert_base_query = "INSERT INTO white_cards (text, watermark) VALUES ";
+        all_ids_query = "SELECT id FROM white_cards WHERE id > %s ;";
+        insert_set_query = "INSERT INTO card_set_white_card (card_set_id, white_card_id) VALUES ";
+        
+        cur.execute(max_id_query);
+
+        max_id = cur.fetchone()[0];
+
+        if(max_id is None):
+                max_id = 0;
+        
+        args_str = ','.join(cur.mogrify("(%s, %s)", (card['text'], card['watermark'])).decode("utf-8") for card in white_cards);
+        query = insert_base_query + args_str + ";";
+
+        cur.execute(query);
+
+        cur.execute(all_ids_query, (max_id, ));
+
+        all_ids = cur.fetchall();
+
+        args_str = ','.join(cur.mogrify("(%s, %s)", (card_set_id, card_id[0])).decode("utf-8") for card_id in all_ids);
+        query = insert_set_query + args_str + ";";
+
+        cur.execute(query);
+                
         return;
-restoreCardSet('simplebackup.dat');
