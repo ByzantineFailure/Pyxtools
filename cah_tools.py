@@ -3,6 +3,7 @@ import psycopg2
 import psycopg2.extras
 import json
 import time
+import sys
 
 config = getConfig();
 
@@ -122,7 +123,7 @@ def restoreCardSet(filename):
                 insertWhiteCards(card_set['white_cards'], card_set_id, conn);
         except:
                 print("Error inserting card set.  Rolling everything back...");
-                print("Error was: " + sys.exc_info()[0]);
+                print("Error was: \n{}".format(sys.exc_info()[2].format_exception()));
                 conn.rollback();
 
         conn.commit();
@@ -153,60 +154,35 @@ def insertCardSetRecord(card_set, conn):
 
 def insertBlackCards(black_cards, card_set_id, conn):
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor);
-        max_id_query = "SELECT MAX(id) FROM black_cards;";
-        insert_base_query = "INSERT INTO black_cards (text, draw, pick, watermark) VALUES ";
+        insert_base_query = "INSERT INTO black_cards (text, draw, pick, watermark) VALUES (%s, %s, %s, %s) RETURNING id;";
         all_ids_query = "SELECT id FROM black_cards WHERE id > %s ;";
-        insert_set_query = "INSERT INTO card_set_black_card (card_set_id, black_card_id) VALUES ";
+        insert_set_query = "INSERT INTO card_set_black_card (card_set_id, black_card_id) VALUES (%s, %s);";
         
-        cur.execute(max_id_query);
+        for card in black_cards:
+           card_query = cur.mogrify(insert_base_query, (card['text'], card['draw'], card['pick'], card['watermark']));
+           print(card_query);
+           cur.execute(card_query);
+           card_id = cur.fetchone()[0];
+           card_set_query = cur.mogrify(insert_set_query, (card_set_id, card_id));
+           print(card_set_query);
+           cur.execute(card_set_query);
 
-        max_id = cur.fetchone()[0];
-
-        if(max_id is None):
-                max_id = 0;
-        
-        args_str = ','.join(cur.mogrify("(%s, %s, %s, %s)", (card['text'], card['draw'], card['pick'], card['watermark'])).decode("utf-8") for card in black_cards);
-        query = insert_base_query + args_str + ";";
-
-        cur.execute(query);
-
-        cur.execute(all_ids_query, (max_id, ));
-
-        all_ids = cur.fetchall();
-
-        args_str = ','.join(cur.mogrify("(%s, %s)", (card_set_id, card_id[0])).decode("utf-8") for card_id in all_ids);
-        query = insert_set_query + args_str + ";";
-
-        cur.execute(query);
-                
         return;
 
 def insertWhiteCards(white_cards, card_set_id, conn):
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor);
-        max_id_query = "SELECT MAX(id) FROM white_cards;";
-        insert_base_query = "INSERT INTO white_cards (text, watermark) VALUES ";
-        all_ids_query = "SELECT id FROM white_cards WHERE id > %s ;";
-        insert_set_query = "INSERT INTO card_set_white_card (card_set_id, white_card_id) VALUES ";
-        
-        cur.execute(max_id_query);
-
-        max_id = cur.fetchone()[0];
-
-        if(max_id is None):
-                max_id = 0;
-        
-        args_str = ','.join(cur.mogrify("(%s, %s)", (card['text'], card['watermark'])).decode("utf-8") for card in white_cards);
-        query = insert_base_query + args_str + ";";
-
-        cur.execute(query);
-
-        cur.execute(all_ids_query, (max_id, ));
-
-        all_ids = cur.fetchall();
-
-        args_str = ','.join(cur.mogrify("(%s, %s)", (card_set_id, card_id[0])).decode("utf-8") for card_id in all_ids);
-        query = insert_set_query + args_str + ";";
-
-        cur.execute(query);
+        insert_base_query = "INSERT INTO white_cards (text, watermark) VALUES (%s, %s) RETURNING id;";
+        insert_set_query = "INSERT INTO card_set_white_card (card_set_id, white_card_id) VALUES (%s, %s);";
+	
+        for card in white_cards:
+            card_query = cur.mogrify(insert_base_query, (card['text'], card['watermark']));
+            print(card_query);
+            cur.execute(card_query);
+            card_id = cur.fetchone()[0];
+            card_set_query = cur.mogrify(insert_set_query, (card_set_id, card_id));
+            print(card_set_query);
+            cur.execute(card_set_query);
                 
         return;
+
+restoreCardSet("dmc_bk.json");
