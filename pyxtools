@@ -45,35 +45,34 @@ def createWhiteCard():
     return card
 
 def doInsert():
-    card = None
-    if args.white:
-        card = createWhiteCard()
-    else:
-        card = createBlackCard()
+    card = {
+        'white': lambda: createWhiteCard(),
+        'black': lambda: createBlackCard()
+    }[args.cardcolor]()
 
-    print('Are you sure you want to insert ' + ('white' if args.white else 'black') + ' card to card set ' + str(args.cardset) + '?')
+    print('Are you sure you want to insert ' + args.cardcolor + ' card to card set ' + str(args.cardset) + '?')
     print(str(card))
     choice = input('Y/N? ')
     if choice != 'Y' and choice != 'y':
         print('Exiting...')
         conn.close()
         sys.exit(0)
-
-    if args.white:
-        db.insertWhiteCards([card], args.cardset, conn)
-    else:
-        db.insertBlackCards([card], args.cardset, conn)
+    
+    {
+        'white': lambda: db.insertWhiteCards([card], args.cardset, conn),
+        'black': lambda: db.insertBlackCards([card], args.cardset, conn)
+    }[args.cardcolor]()
     
     conn.commit()
     print('Inserted')
 
 def doDelete():
-    if args.white:
-        db.deleteWhiteCard(args.id, conn)
-        print('White card deleted')
-    elif args.black:    
-        db.deleteBlackCard(args.id, conn)
-        print('Black card deleted')
+    {
+        'white': lambda: db.deleteWhiteCard(args.id, conn),
+        'black': lambda: db.deleteBlackCard(args.id, conn)
+    }[args.cardcolor]()
+    conn.commit()
+    print('Card deleted')
 
 def doExport():
     db.backUpCardSet(args.cardset, args.filename)

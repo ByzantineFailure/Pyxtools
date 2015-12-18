@@ -208,7 +208,6 @@ def deleteWhiteCard(white_card_id, conn):
         cur.execute(mog_cswc_query)
         print(mog_wc_query)
         cur.execute(mog_wc_query)
-        conn.commit()
     except:
         print('Error deleting white card');
         print(traceback.format_exception());
@@ -225,7 +224,6 @@ def deleteBlackCard(black_card_id, conn):
         cur.execute(mog_csbc_query)
         print(mog_bc_query)
         cur.execute(mog_bc_query)
-        conn.commit()
     except:
         print('Error deleting black card');
         print(traceback.format_exception());
