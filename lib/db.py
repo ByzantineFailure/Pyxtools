@@ -1,4 +1,4 @@
-from config import *
+from lib import config
 import psycopg2
 import psycopg2.extras
 import json
@@ -6,9 +6,7 @@ import time
 import sys
 import traceback
 
-config = getConfig();
-
-connString = config['connString'];
+connString = config.getConfig()['connString'];
 
 def getConnection():
     try:
@@ -20,6 +18,8 @@ def backUpCardSet(setId, filename):
         conn = getConnection()
                 
         card_set = getCardSet (setId, conn);
+        for card in card_set:
+            card.pop('id', None)
 
         encoded = json.dumps(card_set, separators=(',',':'));
 
@@ -61,7 +61,7 @@ def getCardSet(setId, conn):
 def getCardSetWhiteCards(setId, conn):
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor);
         card_set_query = "SELECT * FROM card_set_white_card WHERE card_set_id = %s ;";
-        white_card_query = "SELECT text, watermark FROM white_cards WHERE id = ANY (%s);";
+        white_card_query = "SELECT id, text, watermark FROM white_cards WHERE id = ANY (%s);";
 
         try:
                 cur.execute(card_set_query, (str(setId), ));
@@ -82,7 +82,7 @@ def getCardSetWhiteCards(setId, conn):
         retArray = [];
         
         for value in rows:
-                retArray.append({ 'text' : value[0], 'watermark' : value[1]});        
+            retArray.append({ 'id': value[0], 'text' : value[1], 'watermark' : value[2]});        
 
         cur.close();
         
@@ -91,7 +91,7 @@ def getCardSetWhiteCards(setId, conn):
 def getCardSetBlackCards(setId, conn):
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor);
         card_set_query = "SELECT * FROM card_set_black_card WHERE card_set_id = %s ;";
-        black_card_query = "SELECT text, draw, pick, watermark FROM black_cards WHERE id = ANY (%s);";
+        black_card_query = "SELECT id, text, draw, pick, watermark FROM black_cards WHERE id = ANY (%s);";
 
         try:
                 cur.execute(card_set_query, (str(setId), ));
@@ -115,8 +115,8 @@ def getCardSetBlackCards(setId, conn):
         retArray = [];
 
         for value in rows:
-                retArray.append({ 'text' : value[0], 'draw' : value[1], 'pick' : value[2],
-                          'watermark' : value[3] });
+            retArray.append({ 'id' : value[0], 'text' : value[1], 'draw' : value[2], 'pick' : value[3],
+                          'watermark' : value[4] });
         
         return retArray;
 
@@ -195,4 +195,38 @@ def insertWhiteCards(white_cards, card_set_id, conn):
             cur.execute(card_set_query);
                 
         return;
+
+def deleteWhiteCard(white_card_id, conn):
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    delete_cswc_query = "DELETE FROM card_set_white_card WHERE white_card_id = %s;";
+    delete_wc_query = "DELETE FROM white_cards WHERE id = %s;"
+
+    mog_cswc_query = cur.mogrify(delete_cswc_query, (white_card_id,))
+    mog_wc_query = cur.mogrify(delete_wc_query, (white_card_id,))
+    try:
+        print(mog_cswc_query)
+        cur.execute(mog_cswc_query)
+        print(mog_wc_query)
+        cur.execute(mog_wc_query)
+        conn.commit()
+    except:
+        print('Error deleting white card');
+        print(traceback.format_exception());
+
+def deleteBlackCard(black_card_id, conn):
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    delete_csbc_query = "DELETE FROM card_set_black_card WHERE black_card_id = %s;";
+    delete_bc_query = "DELETE FROM black_cards WHERE id = %s;"
+
+    mog_csbc_query = cur.mogrify(delete_csbc_query, (black_card_id,))
+    mog_bc_query = cur.mogrify(delete_bc_query, (black_card_id,))
+    try:
+        print(mog_csbc_query)
+        cur.execute(mog_csbc_query)
+        print(mog_bc_query)
+        cur.execute(mog_bc_query)
+        conn.commit()
+    except:
+        print('Error deleting black card');
+        print(traceback.format_exception());
 

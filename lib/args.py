@@ -1,7 +1,7 @@
 import argparse
-from config import getConfig
+from lib import config
 
-config = getConfig()
+config = config.getConfig()
 
 def getArgs():
     parser = argparse.ArgumentParser(description='CLI tools for a PYX database')
@@ -27,7 +27,7 @@ def getArgs():
     deleteparser = commandparser.add_parser('delete', help='Delete a card (by id) -- Not yet implemented')
 
     dcardtypepg = deleteparser.add_argument_group(title = 'Card Information')
-    dcardtypepg.add_argument('--id', type=int, help='Card id (for delete)', required = True)
+    dcardtypepg.add_argument('-i', '--id', type=int, help='Id of card to delete', required = True)
     dcardtype = dcardtypepg.add_mutually_exclusive_group(required = True)
     dcardtype.add_argument('-w', '--white', action='store_true', help='Delete a white card')
     dcardtype.add_argument('-b', '--black', action='store_true', help='Delete a black card')
@@ -35,7 +35,7 @@ def getArgs():
     #Import
     importparser = commandparser.add_parser('import', help='Import a card set to JSON')
     importparser.add_argument('-f', '--filename', type=str, help='File to import', required = True)
-    importparser.add_argument('-s', '--cardset', type=int, help='Cardset id to insert as (fails if already exists)')
+    importparser.add_argument('-s', '--cardset', type=int, help='UNIMPLEMENTED Cardset id to insert as (fails if already exists)')
 
     #Export
     exportparser = commandparser.add_parser('export', help='Export a card set to JSON (by id)')
@@ -44,5 +44,13 @@ def getArgs():
 
     #Getsets
     setsparser = commandparser.add_parser('cardsets', help='List available cardsets (grep recommended)')
+    colorparser = setsparser.add_subparsers(help='Card colors', dest='cardcolor')
+    
+    whiteparser = colorparser.add_parser('white', help='Get white cards from a card set')
+    whiteparser.add_argument('-s', '--cardset', type=int, default=config['defaultCardSet'], help='Card set to retreive cards for.  Defaults to ' + str(config['defaultCardSet']), required = True)
+    
+    blackparser = colorparser.add_parser('black', help='Get black cards from a card set')
+    blackparser.add_argument('-s', '--cardset', type=int, default=config['defaultCardSet'], help='Card set to retreive cards for.  Defaults to ' + str(config['defaultCardSet']), required = True)
+
     return parser
 
