@@ -4,28 +4,44 @@ import psycopg2.extras
 import json
 import time
 import sys
+import traceback
 
 config = getConfig();
 
 connString = config['connString'];
 
-def backUpCardSet(setId):
-        try:
-                conn = psycopg2.connect(connString);
-        except:
-                print("Unable to connect to database");
+def getConnection():
+    try:
+        return psycopg2.connect(connString);
+    except:
+        print('Unable to connect to database!')
+
+def backUpCardSet(setId, filename):
+        conn = getConnection()
                 
         card_set = getCardSet (setId, conn);
 
         encoded = json.dumps(card_set, separators=(',',':'));
-
-        filename = card_set['name'] + " backup " + time.strftime("%m-%d-%y") + " " + time.strftime("%H %M %S") + ".dat";
 
         backup_file = open(filename, 'w');
         backup_file.write(encoded);
         backup_file.close();
                              
         conn.close();
+
+def getCardSetList(conn):
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor);
+    query = "SELECT id, name, active FROM card_set;";
+
+    try:
+        cur.execute(query);
+    except:
+        print("Couldn't get card sets");
+        traceback.print_stack();
+        return;
+
+    sets = cur.fetchall()
+    return sets
 
 def getCardSet(setId, conn):
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor);
@@ -40,7 +56,6 @@ def getCardSet(setId, conn):
         card_set = dict(cur.fetchall()[0]);
         card_set['black_cards'] = getCardSetBlackCards(setId, conn);
         card_set['white_cards'] = getCardSetWhiteCards(setId, conn);
-        print(card_set);        
         return card_set;
 
 def getCardSetWhiteCards(setId, conn):
@@ -111,11 +126,7 @@ def restoreCardSet(filename):
         file.close();
 
         card_set = json.loads(set_json);
-
-        try:
-                conn = psycopg2.connect(connString);
-        except:
-                print("Unable to connect to database");
+        conn = getConnection()
         
         try:
                 card_set_id = insertCardSetRecord(card_set, conn);
@@ -185,4 +196,3 @@ def insertWhiteCards(white_cards, card_set_id, conn):
                 
         return;
 
-restoreCardSet("dmc_bk.json");
