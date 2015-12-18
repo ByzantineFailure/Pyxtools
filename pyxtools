@@ -75,12 +75,16 @@ def doDelete():
     print('Card deleted')
 
 def doExport():
-    db.backUpCardSet(args.cardset, args.filename)
+    db.backUpCardSet(args.cardset, args.filename, conn)
     print('Export successful')
 
 def doImport():
-    db.restoreCardSet(args.filename)
-    print('Import successful')
+    id = db.restoreCardSet(args.cardset, args.filename, conn)
+    if id == -1:
+        print('Import failed!')
+    else:    
+        conn.commit()
+        print('Import successful')
 
 def doCardsets():
     if args.cardcolor == 'white':

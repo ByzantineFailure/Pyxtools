@@ -39,7 +39,7 @@ def getArgs():
     #Import
     importparser = commandparser.add_parser('import', help='Import a card set to JSON')
     importparser.add_argument('-f', '--filename', type=str, help='File to import', required = True)
-    importparser.add_argument('-s', '--cardset', type=int, help='UNIMPLEMENTED Cardset id to insert as (fails if already exists)')
+    importparser.add_argument('-s', '--cardset', type=int, help='Cardset id to insert as (fails if already exists)', required = True)
 
     #Export
     exportparser = commandparser.add_parser('export', help='Export a card set to JSON (by id)')
