@@ -68,3 +68,7 @@ Configure (see below)
   
 #Configuration
 In the repo's root, open `lib/config.py` and set the `dbConnString` variable to a connection string which will connect you to your PretendYoureXyzzy instance's postgreSQL database as the correct user.  ([An example](https://wiki.postgresql.org/wiki/Using_psycopg2_with_PostgreSQL#Connect_to_Postgres))
+
+Edit the `defaultCardSet` variable to the ID of the card set you work with most.
+
+Edit the `defaultWatermark` variable to the watermark you tend to apply most.
