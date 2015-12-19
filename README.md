@@ -19,42 +19,42 @@ Detailed usage and help is provided via the `-h` flag provided by python's argpa
 
 `pyxtools export -s CARDSET -f FILENAME` - export a cardset to a file
 
-`pyxtools import -f FILENAME` - import a cardset from a file
+`pyxtools import -f FILENAME -s NEW_SET_ID` - import a cardset from a file to the ID specified in `NEW_SET_ID`
 
 #Installation
 ##Linux (Ubuntu/Mint)
 _If you are running a distro other than Ubuntu the only thing that should change here is your commands for retreiving psycopg2's dependencies from your package manager_
 
 
-Install python3 and psycopg2's dependencies:
+* Install python3 and psycopg2's dependencies:
 
 `sudo apt-get install python3 libpq-dev python-dev`
 
-Install pip if you do not already have it
+* Install pip if you do not already have it
 
 `sudo apt-get install python3-pip`
 
-Install `psycopg2`, our PostgreSQL driver -- cloning and running via python3 should work after this step.
+* Install `psycopg2`, our PostgreSQL driver -- cloning and running via python3 should work after this step.
 
 `pip3 install psycopg2`
 
-Clone down the repo 
+* Clone down the repo 
 
 `cd /usr/local/lib` <- Change this to wherever you'd like the code to live
 
 `sudo git clone https://github.com/ByzantineFailure/Pyxtools.git`
 
-Configure (see below)
+* Configure (see below)
 
-(Optional) Set up a symlink in `/usr/local/bin` -- Only do if you did above into `/usr/local/lib`
+* (Optional) Set up a symlink in `/usr/local/bin` -- Only do if you did above into `/usr/local/lib`
 
 `cd /usr/local/bin`
 
 `ln -s /usr/local/lib/Pyxtools/pyxtools pyxtools`
 
 ##Mac OS X
-1.  Install python3
-2.  Install psycopg2
+1.  [Install python3](https://www.python.org/downloads/mac-osx/)
+2.  Install psycopg2 (you're on your own here)
 3.  Clone down repo
 4.  Configure (see below)
 5.  (Optional) Add a symlink to `/usr/local/bin` to put the repo on your PATH
