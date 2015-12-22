@@ -76,12 +76,12 @@ def doInsert():
             'black': lambda: db.insertBlackCards([card], args.cardset, conn)
         }[args.cardcolor]()
     
-    #conn.commit()
+    conn.commit()
     print('Inserted')
 
 def doDelete():
     db.deleteCard(args.cardcolor, args.id, conn)
-    #conn.commit()
+    conn.commit()
     print('Card deleted')
 
 def doExport():
@@ -156,7 +156,7 @@ def doImport():
         traceback.print_exc()
         exitWithMessage('Error importing cardset')
     
-    #conn.commit()
+    conn.commit()
     print('Import successful')
 
 def doCardsets():
