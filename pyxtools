@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import sys
+import traceback
 from lib import args
 from lib import db
 
+dupBehavior = args.ImportDuplicateBehavior
 args = args.getArgs().parse_args()
 
 conn = db.getConnection()
@@ -50,7 +52,8 @@ def doInsert():
         'black': lambda: createBlackCard()
     }[args.cardcolor]()
 
-    print('Are you sure you want to insert ' + args.cardcolor + ' card to card set ' + str(args.cardset) + '?')
+    print('Are you sure you want to insert ' + args.cardcolor + ' card to card set ' \
+            + str(args.cardset) + '?')
     print(str(card))
     choice = input('Y/N? ')
     if choice != 'Y' and choice != 'y':
@@ -63,43 +66,104 @@ def doInsert():
         'black': lambda: db.insertBlackCards([card], args.cardset, conn)
     }[args.cardcolor]()
     
-    conn.commit()
+    #conn.commit()
     print('Inserted')
 
 def doDelete():
-    {
-        'white': lambda: db.deleteWhiteCard(args.id, conn),
-        'black': lambda: db.deleteBlackCard(args.id, conn)
-    }[args.cardcolor]()
-    conn.commit()
+    db.deleteCard(args.cardcolor, args.id, conn)
+    #conn.commit()
     print('Card deleted')
 
 def doExport():
     db.backUpCardSet(args.cardset, args.filename, conn)
     print('Export successful')
 
+def removeDuplicates(cards, duplicates):
+    duplicateText = [card['text'] for card in duplicates]
+    return [card for card in cards if not card['text'] in duplicateText]
+
+def confirmLink(cardType, duplicates, shouldFail):
+    skip = []
+    link = []
+    for card in duplicates:
+        print('Found duplicate ' + cardType + 'card with text:')
+        print('    ' + card['text'])
+        accept = input('Link (Y/N)? ')
+        if accept == 'Y' or accept == 'y':
+            link.append(card)
+        elif shouldFail:
+            exitWithMessage('Duplicate rejected while set to fail on rejection.  Exiting...')
+        else:
+            skip.append(card)
+    
+    return { 'skip' : skip, 'link' : link }
+
 def doImport():
-    id = db.restoreCardSet(args.cardset, args.filename, conn)
-    if id == -1:
-        print('Import failed!')
-    else:    
-        conn.commit()
-        print('Import successful')
+    cardSet = db.readCardSet(args.filename)
+    whiteDuplicates = db.getDuplicateCards('white', cardSet['white_cards'], conn)
+    blackDuplicates = db.getDuplicateCards('black', cardSet['black_cards'], conn)
+    toLinkWhite = None
+    toLinkBlack = None
+    
+    if args.duplicateBehavior == dupBehavior.askAndFail.value:
+        toLinkWhite = confirmLink('white', whiteDuplicates, True)
+        toLinkBlack = confirmLink('black', blackDuplicates, True)
+    elif args.duplicateBehavior == dupBehavior.askAndSkip.value:
+        toLinkWhite = confirmLink('white', whiteDuplicates, False)
+        toLinkBlack = confirmLink('black', blackDuplicates, False)
+    elif args.duplicateBehavior == dupBehavior.link.value:
+        toLinkWhite = { 'link': whiteDuplicates, 'skip': [] }
+        toLinkBlack = { 'link': blackDuplicates, 'skip': [] }
+    elif len(whiteDuplicates) > 0 or len(blackDuplicates) > 0:
+        print('white duplicates:')
+        for card in whiteDuplicates:
+            print('{{ id: {0}, text: {1}, set: {2}}}'.format(card['id'], card['text'].encode('utf-8'), card['cardset']))
+        print('black duplicates:')
+        for card in blackDuplicates:
+            print('{{ id: {0}, text: {1}, set: {2}}}'.format(card['id'], card['text'].encode('utf-8'), card['cardset']))
+        exitWithMessage('Duplicates found and duplicate behavior set to fail! (pyxtools import -h for more options)')
+    
+    #Remove duplicates from main set
+    cardSet['white_cards'] = removeDuplicates(cardSet['white_cards'], whiteDuplicates)    
+    cardSet['black_cards'] = removeDuplicates(cardSet['black_cards'], blackDuplicates)    
+
+    try:
+        cardsetId = db.insertCardSetRecord(args.cardset, cardSet, conn)
+        if len(cardSet['black_cards']) > 0:
+            print('Inserting black cards...')
+            db.insertBlackCards(cardSet['black_cards'], cardsetId, conn)
+        if len(cardSet['white_cards']) > 0:
+            print('Inserting white cards...')
+            db.insertWhiteCards(cardSet['white_cards'], cardsetId, conn)
+        if len(toLinkWhite) > 0:
+            print('Linking pre-existing white cards...')
+            db.linkExisingCards('white', [card['id'] for card in toLinkWhite['link']], cardsetId, conn)
+        if len(toLinkBlack) > 0:
+            print('Linking pre-existing black cards...')
+            db.linkExisingCards('black', [card['id'] for card in toLinkBlack['link']], cardsetId, conn)
+    except:
+        conn.rollback()
+        traceback.print_exc()
+        exitWithMessage('Error importing cardset')
+    
+    #conn.commit()
+    print('Import successful')
 
 def doCardsets():
     if args.cardcolor == 'white':
         cards = db.getCardSetWhiteCards(args.cardset, conn)
         for card in cards:
-            print("{{ id: {0}, text: {1}, watermark: {2} }}".format(card['id'], card['text'].encode('utf-8'), card['watermark']))
+            print("{{ id: {0}, text: {1}, watermark: {2} }}".format(\
+                    card['id'], card['text'].encode('utf-8'), card['watermark']))
     elif args.cardcolor == 'black':
         cards = db.getCardSetBlackCards(args.cardset, conn)
         for card in cards:
-            print("{{ id: {0}, text: {1}, pick: {2}, draw: {3}, watermark: {4}}}".format(card['id'], card['text'].encode('utf-8'), card['pick'], card['draw'], card['watermark']))
+            print("{{ id: {0}, text: {1}, pick: {2}, draw: {3}, watermark: {4}}}".format(\
+                    card['id'], card['text'].encode('utf-8'), card['pick'], card['draw'], card['watermark']))
     else:
         sets = db.getCardSetList(conn)
         for cardset in sets:
             print(str(cardset))
-    
 
 #Because python has no switch
 commands = {

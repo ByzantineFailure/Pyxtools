@@ -1,7 +1,14 @@
 import argparse
+import enum
 from lib import config
 
 config = config.getConfig()
+
+class ImportDuplicateBehavior(enum.Enum):
+    fail = 1
+    askAndFail = 2
+    askAndSkip = 3
+    link = 4
 
 def getArgs():
     parser = argparse.ArgumentParser(description='CLI tools for a PYX database')
@@ -40,6 +47,12 @@ def getArgs():
     importparser = commandparser.add_parser('import', help='Import a card set to JSON')
     importparser.add_argument('-f', '--filename', type=str, help='File to import', required = True)
     importparser.add_argument('-s', '--cardset', type=int, help='Cardset id to insert as (fails if already exists)', required = True)
+
+    duplicateBehavior = importparser.add_mutually_exclusive_group()
+    duplicateBehavior.add_argument('--failOnDuplicate', dest='duplicateBehavior', action='store_const', const=ImportDuplicateBehavior.fail.value, help="Fail on duplicate cards.  Default behavior")
+    duplicateBehavior.add_argument('--askAndFailOnDuplicate', dest='duplicateBehavior', action='store_const', const=ImportDuplicateBehavior.askAndFail.value, help="Ask whether or not to link when a duplicate is found. Fails operation if any card is denied")
+    duplicateBehavior.add_argument('--askAndSkipOnDuplicate', dest='duplicateBehavior', action='store_const', const=ImportDuplicateBehavior.askAndSkip.value, help="Ask whether or not to link when a duplicate is found.  Skips rejected cards")
+    duplicateBehavior.add_argument('--linkOnDuplicate', dest='duplicateBehavior', action='store_const', const=ImportDuplicateBehavior.link.value, help="Automatically link the existing card on existing duplicate")
 
     #Export
     exportparser = commandparser.add_parser('export', help='Export a card set to JSON (by id)')
