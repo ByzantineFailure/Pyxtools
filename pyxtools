@@ -61,10 +61,20 @@ def doInsert():
         conn.close()
         sys.exit(0)
     
-    {
-        'white': lambda: db.insertWhiteCards([card], args.cardset, conn),
-        'black': lambda: db.insertBlackCards([card], args.cardset, conn)
-    }[args.cardcolor]()
+    duplicate = db.getDuplicateCards(args.cardcolor, [card], conn)
+    if len(duplicate) > 0:
+        print('Duplicate text found:')
+        print('{{ id: {0}, text: {1}, set: {2}}}'.format(duplicate[0]['id'], duplicate[0]['text'].encode('utf-8'), duplicate[0]['cardset']))
+        link = input('Link to current card set? (Y/N) ')
+        if link == 'Y' or link == 'y':
+            db.linkExisingCards(args.cardcolor, [duplicate[0]['id']], args.cardset, conn)
+        else:
+            exitWithMessage('Not inserting.')
+    else:
+        {
+            'white': lambda: db.insertWhiteCards([card], args.cardset, conn),
+            'black': lambda: db.insertBlackCards([card], args.cardset, conn)
+        }[args.cardcolor]()
     
     #conn.commit()
     print('Inserted')

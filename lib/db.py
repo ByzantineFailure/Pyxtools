@@ -227,7 +227,6 @@ def getDuplicateCards(cardType, cards, conn):
         LEFT JOIN card_set cs
             ON cs.id = csc.card_set_id
         WHERE c.id IS NOT NULL;
-
     """.format(cardType, textValues)
     
     cur.execute(query) 
